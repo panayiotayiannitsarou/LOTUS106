@@ -3,8 +3,8 @@ import pandas as pd
 import math
 from io import BytesIO
 
-from utils.statistics import generate_statistics_table, export_statistics_to_excel
-from steps.step_1_paidia_ekp import generate_teacher_kids_scenarios
+from statistics import generate_statistics_table, export_statistics_to_excel
+from step_1_paidia_ekp import generate_teacher_kids_scenarios
 
 # --- Αρχικοποίηση session state ---
 if "authenticated" not in st.session_state:
