@@ -36,9 +36,9 @@ def generate_teacher_kids_scenarios(df, num_classes):
         if len(set(combo)) == 1:
             continue
 
-        # Απόρριψη αν διαφορά >2
+        # Απόρριψη αν διαφορά >1
         counts = [len(v) for v in class_map.values()]
-        if max(counts) - min(counts) > 2:
+        if max(counts) - min(counts) > 1:
             continue
 
         # Απόρριψη αν έχει εξωτερική σύγκρουση
