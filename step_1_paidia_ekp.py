@@ -14,7 +14,6 @@ def generate_teacher_kids_scenarios(df, num_classes):
     if len(names) == 0:
         return [df]
 
-    # Αν τα παιδιά είναι λιγότερα ή ίσα από τα τμήματα
     if len(names) <= num_classes:
         df_copy = df.copy()
         for i, name in enumerate(names):
@@ -33,11 +32,9 @@ def generate_teacher_kids_scenarios(df, num_classes):
             class_map.setdefault(klass, []).append(name)
             temp_df.loc[temp_df["ΟΝΟΜΑ"] == name, "ΠΡΟΤΕΙΝΟΜΕΝΟ_ΤΜΗΜΑ"] = klass
 
-        # Απόρριψη αν όλα στο ίδιο τμήμα
         if len(set(combo)) == 1:
             continue
 
-        # ΝΕΟ: Απόρριψη αν διαφορά >1 (αντί για >2)
         counts = [len(v) for v in class_map.values()]
         if max(counts) - min(counts) > 1:
             continue
@@ -55,10 +52,17 @@ def generate_teacher_kids_scenarios(df, num_classes):
     def count_broken_friendships(df):
         broken = 0
         for name in names:
-            friend = df.loc[df["ΟΝΟΜΑ"] == name, "ΦΙΛΟΣ"].values[0]
-            if friend in names:
-                if not are_friends(df, name, friend):
-                    broken += 1
+            row = df[df["ΟΝΟΜΑ"] == name]
+            if row.empty:
+                continue
+            friends_raw = row.iloc[0].get("ΦΙΛΟΙ")
+            if pd.isna(friends_raw):
+                continue
+            friends = [f.strip() for f in str(friends_raw).split(",") if f.strip()]
+            for friend in friends:
+                if friend in names and are_friends(df, name, friend):
+                    if df.loc[df["ΟΝΟΜΑ"] == name, "ΠΡΟΤΕΙΝΟΜΕΝΟ_ΤΜΗΜΑ"].values[0] != df.loc[df["ΟΝΟΜΑ"] == friend, "ΠΡΟΤΕΙΝΟΜΕΝΟ_ΤΜΗΜΑ"].values[0]:
+                        broken += 1
         return broken
 
     if len(valid_scenarios) > 5:
