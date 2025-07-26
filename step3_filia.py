@@ -5,51 +5,60 @@ from helpers import calculate_penalty_score, resolve_with_friendship
 def step3_amivaia_filia(df, num_classes, scenario2_cols, scenario_prefix="ΒΗΜΑ3_ΣΕΝΑΡΙΟ_"):
     """
     Βήμα 3 – Τοποθέτηση Μη Τοποθετημένων Μαθητών βάσει Πλήρους Αμοιβαίας Φιλίας
+    Επιστρέφονται έως 5 σενάρια με το μικρότερο score και λιγότερες σπασμένες φιλίες.
     """
-    final_results = []  # Λίστα με όλα τα DataFrames Βήματος 3
-    scores = []         # Αντίστοιχα penalty scores
+    scenario_results = []
 
     for i, scen_col in enumerate(scenario2_cols):
         temp_df = df.copy()
         temp_df["temp_class"] = temp_df[scen_col]
 
-        # Εύρεση μη τοποθετημένων
         unplaced = temp_df[temp_df["temp_class"].isna()]
         placed = temp_df[temp_df["temp_class"].notna()]
 
-        # Για κάθε μη τοποθετημένο μαθητή
         for _, row in unplaced.iterrows():
             name = row["ΟΝΟΜΑ"]
             friend = row["ΦΙΛΟΣ"]
-
-            # Αν υπάρχει φίλος και είναι πλήρως αμοιβαία η σχέση
             if pd.notna(friend):
                 friend_row = placed[placed["ΟΝΟΜΑ"] == friend]
                 if not friend_row.empty and friend_row.iloc[0]["ΦΙΛΟΣ"] == name:
-                    # Τοποθέτηση στο ίδιο τμήμα με τον φίλο
                     klass = friend_row.iloc[0]["temp_class"]
                     temp_df.loc[temp_df["ΟΝΟΜΑ"] == name, "temp_class"] = klass
 
-        # Υπολογισμός score για το σενάριο
         score = calculate_penalty_score(temp_df)
-        scores.append(score)
-        final_results.append(temp_df.copy())
+        scenario_results.append((temp_df.copy(), score))
 
-    # Επιλογή σεναρίου με το μικρότερο score
-    min_score = min(scores)
-    best_indices = [i for i, s in enumerate(scores) if s == min_score]
+    if not scenario_results:
+        print("⚠️ Δεν υπάρχουν έγκυρα σενάρια στο Βήμα 3.")
+        return df
 
-    if len(best_indices) > 1:
-        best_index = resolve_with_friendship([final_results[i] for i in best_indices],
-                                             [scores[i] for i in best_indices],
-                                             temp_df[temp_df["temp_class"].isna()]["ΟΝΟΜΑ"].tolist())
+    # Φιλτράρισμα μόνο αυτών με το μικρότερο score
+    min_score = min(score for _, score in scenario_results)
+    best_scenarios = [(df_, s) for df_, s in scenario_results if s == min_score]
+
+    # Αν είναι πάνω από 5, προτεραιότητα σε λιγότερες σπασμένες φιλίες
+    if len(best_scenarios) > 5:
+        def count_broken_friendships(df_):
+            broken = 0
+            for _, row in df_.iterrows():
+                name = row["ΟΝΟΜΑ"]
+                friend = row["ΦΙΛΟΣ"]
+                if pd.notna(friend):
+                    friend_row = df_[df_["ΟΝΟΜΑ"] == friend]
+                    if not friend_row.empty and friend_row.iloc[0]["ΦΙΛΟΣ"] == name:
+                        if row["temp_class"] != friend_row.iloc[0]["temp_class"]:
+                            broken += 1
+            return broken
+
+        best_scenarios.sort(key=lambda x: count_broken_friendships(x[0]))
+        top_scenarios = best_scenarios[:5]
     else:
-        best_index = best_index = best_indices[0]
+        top_scenarios = best_scenarios
 
-    # Προσθήκη νέων στηλών ΒΗΜΑ3_ΣΕΝΑΡΙΟ_X
+    # Δημιουργία τελικού DataFrame με στήλες ΒΗΜΑ3_ΣΕΝΑΡΙΟ_1 έως 5
     df_result = df.copy()
-    for idx, temp_df in enumerate(final_results):
+    for idx, (scenario_df, _) in enumerate(top_scenarios):
         col_name = f"{scenario_prefix}{idx + 1}"
-        df_result[col_name] = temp_df["temp_class"]
+        df_result[col_name] = scenario_df["temp_class"]
 
     return df_result
