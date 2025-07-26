@@ -3,7 +3,7 @@ import pandas as pd
 import math
 from io import BytesIO
 
-from statistics import generate_statistics_table, export_statistics_to_excel
+from statistics_generator import generate_statistics_table, export_statistics_to_excel
 from step_1_paidia_ekp import generate_teacher_kids_scenarios
 
 # --- Αρχικοποίηση session state ---
